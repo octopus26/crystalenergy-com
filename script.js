@@ -324,7 +324,111 @@ Generate your immediate AI consultation now?
         }
     }
 
-    generateConsultationContent(data) {
+    async generateConsultationContent(data) {
+        // If OpenAI API key is not available, fall back to template system
+        const OPENAI_API_KEY = this.getOpenAIKey();
+        
+        if (!OPENAI_API_KEY) {
+            console.log('OpenAI API key not found, using fallback template system');
+            return this.generateFallbackContent(data);
+        }
+
+        try {
+            const consultation = await this.generateOpenAIConsultation(data, OPENAI_API_KEY);
+            return consultation;
+        } catch (error) {
+            console.error('OpenAI API error:', error);
+            console.log('Falling back to template system');
+            return this.generateFallbackContent(data);
+        }
+    }
+
+    getOpenAIKey() {
+        // In production, this should be stored securely on your backend
+        // For demo purposes, you can set it temporarily in localStorage
+        return localStorage.getItem('openai_api_key') || window.OPENAI_API_KEY;
+    }
+
+    async generateOpenAIConsultation(data, apiKey) {
+        const consultationFocus = {
+            'general': 'general feng shui and life guidance',
+            'love': 'love, relationships, and romantic energy',
+            'career': 'career success, wealth, and professional development',
+            'health': 'health, wellness, and energy balance',
+            'comprehensive': 'comprehensive life analysis covering all aspects'
+        };
+
+        const systemPrompt = `You are a renowned feng shui master and spiritual advisor with 30+ years of experience. You combine ancient Chinese wisdom with modern insights to provide personalized guidance. Your readings are warm, insightful, and practical.
+
+Always structure your response as valid HTML with:
+- Start with an h3 title with appropriate emoji
+- Use h4 for main sections with emojis  
+- Include specific, actionable advice
+- Reference the user's birth details meaningfully
+- Recommend specific crystals from: Amethyst Bracelet, Rose Quartz Pendant, Citrine Wealth Stone, Black Tourmaline Shield
+- Keep tone mystical yet professional
+- Always include practical feng shui tips`;
+
+        const userPrompt = `Please provide a detailed ${consultationFocus[data.consultationType]} consultation for:
+
+Name: ${data.name}
+Birth Date: ${data.birthDate}
+Birth Time: ${data.birthTime || 'Not specified'}
+Birth Place: ${data.birthPlace}
+Specific Questions/Concerns: ${data.questions}
+
+Focus on ${consultationFocus[data.consultationType]}. Include:
+1. Personal energy analysis based on their birth details
+2. Specific feng shui recommendations for their situation
+3. Crystal recommendations from our collection
+4. Actionable steps they can take immediately
+5. Address their specific questions directly
+
+Make this reading unique and personalized to their exact situation and concerns.`;
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-4',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 1500,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const content = result.choices[0].message.content;
+
+        return {
+            title: this.getConsultationTitle(data.consultationType),
+            content: content
+        };
+    }
+
+    getConsultationTitle(type) {
+        const titles = {
+            'general': 'AI-Powered Feng Shui Reading',
+            'love': 'AI Love & Relationships Analysis',
+            'career': 'AI Career & Wealth Consultation',
+            'health': 'AI Health & Wellness Reading',
+            'comprehensive': 'AI Comprehensive Life Analysis'
+        };
+        return titles[type] || titles['general'];
+    }
+
+    generateFallbackContent(data) {
+        // Keep the original template system as fallback
         const birthDate = new Date(data.birthDate);
         const zodiacSigns = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
                            'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
@@ -332,7 +436,6 @@ Generate your immediate AI consultation now?
         const directions = ['North', 'South', 'East', 'West', 'Northeast', 'Northwest', 'Southeast', 'Southwest'];
         const colors = ['Deep Purple', 'Golden Yellow', 'Emerald Green', 'Ruby Red', 'Sapphire Blue'];
         
-        // Simple algorithm to generate personalized content
         const monthIndex = birthDate.getMonth();
         const dayOfYear = Math.floor((birthDate - new Date(birthDate.getFullYear(), 0, 0)) / 86400000);
         
@@ -341,131 +444,79 @@ Generate your immediate AI consultation now?
         const luckyColor = colors[dayOfYear % 5];
         const zodiacSign = zodiacSigns[monthIndex];
 
-        const consultationTemplates = {
-            'general': {
-                title: 'General Feng Shui Reading',
-                content: `
-                    <h3>🔮 Your Personal Energy Analysis</h3>
-                    <p>Dear ${data.name}, based on your birth information, your primary element is <strong>${primaryElement}</strong>, which influences your life's energy flow.</p>
-                    
-                    <h4>✨ Key Insights:</h4>
-                    <ul>
-                        <li><strong>Dominant Element:</strong> ${primaryElement} - This element shapes your natural tendencies and attracts certain energies.</li>
-                        <li><strong>Lucky Direction:</strong> ${luckyDirection} - Face this direction during meditation and important decisions.</li>
-                        <li><strong>Power Color:</strong> ${luckyColor} - Incorporate this color into your wardrobe and living space.</li>
-                        <li><strong>Zodiac Influence:</strong> ${zodiacSign} - Your sign brings unique qualities to your feng shui profile.</li>
-                    </ul>
+        return {
+            title: 'Feng Shui Reading',
+            content: `
+                <h3>🔮 Your Personal Energy Analysis</h3>
+                <p>Dear ${data.name}, based on your birth information, your primary element is <strong>${primaryElement}</strong>.</p>
+                
+                <h4>✨ Key Insights:</h4>
+                <ul>
+                    <li><strong>Dominant Element:</strong> ${primaryElement}</li>
+                    <li><strong>Lucky Direction:</strong> ${luckyDirection}</li>
+                    <li><strong>Power Color:</strong> ${luckyColor}</li>
+                    <li><strong>Zodiac Influence:</strong> ${zodiacSign}</li>
+                </ul>
 
-                    <h4>🏠 Home Recommendations:</h4>
-                    <p>Place ${primaryElement.toLowerCase()} elements in your living space. If your element is Wood, add plants; Fire, use candles; Earth, incorporate crystals; Metal, add metallic decor; Water, include a small fountain.</p>
+                <h4>📝 Your Questions:</h4>
+                <p><em>"${data.questions}"</em></p>
+                <p>Based on your ${primaryElement} element and ${zodiacSign} influence, focus on incorporating ${luckyColor.toLowerCase()} colors and facing ${luckyDirection.toLowerCase()} directions in your practices.</p>
 
-                    <h4>💎 Recommended Crystals:</h4>
-                    <p>Based on your ${primaryElement} element, consider our ${primaryElement === 'Fire' ? 'Citrine' : primaryElement === 'Water' ? 'Amethyst' : primaryElement === 'Earth' ? 'Rose Quartz' : 'Black Tourmaline'} collection.</p>
-                `
-            },
-            'love': {
-                title: 'Love & Relationships Reading',
-                content: `
-                    <h3>💖 Your Love Energy Profile</h3>
-                    <p>Hello ${data.name}, your ${primaryElement} element creates a unique love vibration that attracts meaningful relationships.</p>
-                    
-                    <h4>💕 Relationship Insights:</h4>
-                    <ul>
-                        <li><strong>Love Element:</strong> ${primaryElement} energy influences how you give and receive love.</li>
-                        <li><strong>Romantic Direction:</strong> ${luckyDirection} - Enhance your bedroom's ${luckyDirection.toLowerCase()} corner.</li>
-                        <li><strong>Attraction Color:</strong> ${luckyColor} - Wear this color on dates and romantic occasions.</li>
-                        <li><strong>Compatible Signs:</strong> Your ${zodiacSign} energy harmonizes well with certain zodiac signs.</li>
-                    </ul>
-
-                    <h4>🌹 Love Enhancement Tips:</h4>
-                    <p>Place pairs of objects in your bedroom's ${luckyDirection.toLowerCase()} corner. Rose Quartz crystals will amplify your natural ${primaryElement.toLowerCase()} love energy.</p>
-
-                    <h4>💎 Love Crystal Recommendation:</h4>
-                    <p>Our Rose Quartz Pendant is perfect for your ${primaryElement} element, helping attract and maintain loving relationships.</p>
-                `
-            },
-            'career': {
-                title: 'Career & Wealth Reading',
-                content: `
-                    <h3>💰 Your Wealth & Success Blueprint</h3>
-                    <p>Greetings ${data.name}, your ${primaryElement} element holds the key to unlocking abundant career opportunities.</p>
-                    
-                    <h4>🎯 Career Insights:</h4>
-                    <ul>
-                        <li><strong>Success Element:</strong> ${primaryElement} energy drives your professional ambitions.</li>
-                        <li><strong>Wealth Direction:</strong> ${luckyDirection} - Position your desk facing this direction.</li>
-                        <li><strong>Prosperity Color:</strong> ${luckyColor} - Incorporate into your work attire and office space.</li>
-                        <li><strong>Career Strengths:</strong> ${zodiacSign} traits enhance your professional capabilities.</li>
-                    </ul>
-
-                    <h4>🏢 Office Feng Shui:</h4>
-                    <p>Activate your office's ${luckyDirection.toLowerCase()} corner with ${primaryElement.toLowerCase()} elements. Keep your workspace clutter-free to allow wealth energy to flow.</p>
-
-                    <h4>💎 Wealth Crystal Recommendation:</h4>
-                    <p>Our Citrine Wealth Stone aligns perfectly with your ${primaryElement} element, attracting prosperity and career advancement.</p>
-                `
-            },
-            'health': {
-                title: 'Health & Wellness Reading',
-                content: `
-                    <h3>🌿 Your Wellness Energy Map</h3>
-                    <p>Dear ${data.name}, your ${primaryElement} element influences your physical and emotional well-being.</p>
-                    
-                    <h4>⚖️ Health Insights:</h4>
-                    <ul>
-                        <li><strong>Healing Element:</strong> ${primaryElement} governs your body's natural healing processes.</li>
-                        <li><strong>Wellness Direction:</strong> ${luckyDirection} - Face this direction during meditation and exercise.</li>
-                        <li><strong>Healing Color:</strong> ${luckyColor} - Use in your bedroom and wellness spaces.</li>
-                        <li><strong>Constitutional Type:</strong> ${zodiacSign} influences your health patterns and needs.</li>
-                    </ul>
-
-                    <h4>🧘 Wellness Practices:</h4>
-                    <p>Balance your ${primaryElement.toLowerCase()} energy through specific activities. Spend time in nature, practice mindfulness facing ${luckyDirection.toLowerCase()}, and wear ${luckyColor.toLowerCase()} during healing sessions.</p>
-
-                    <h4>💎 Healing Crystal Recommendation:</h4>
-                    <p>Amethyst crystals resonate with your ${primaryElement} element, promoting spiritual healing and emotional balance.</p>
-                `
-            },
-            'comprehensive': {
-                title: 'Comprehensive Life Analysis',
-                content: `
-                    <h3>🌟 Your Complete Feng Shui Life Map</h3>
-                    <p>Welcome ${data.name}, here's your comprehensive feng shui analysis based on your unique energy signature.</p>
-                    
-                    <h4>🔮 Core Energy Profile:</h4>
-                    <ul>
-                        <li><strong>Primary Element:</strong> ${primaryElement} - Your fundamental life force</li>
-                        <li><strong>Power Direction:</strong> ${luckyDirection} - Your direction of strength and opportunity</li>
-                        <li><strong>Signature Color:</strong> ${luckyColor} - Your personal energy amplifier</li>
-                        <li><strong>Zodiac Essence:</strong> ${zodiacSign} - Your celestial influence</li>
-                    </ul>
-
-                    <h4>🏠 Complete Home Harmony:</h4>
-                    <p>Transform your living space by activating the ${luckyDirection.toLowerCase()} areas with ${primaryElement.toLowerCase()} elements. Use ${luckyColor.toLowerCase()} accents throughout your home.</p>
-
-                    <h4>💼 Career & Wealth:</h4>
-                    <p>Position important work activities facing ${luckyDirection.toLowerCase()}. Your ${primaryElement} element attracts opportunities in leadership, creativity, and innovation.</p>
-
-                    <h4>💖 Love & Relationships:</h4>
-                    <p>Enhance relationship harmony by placing paired objects in your bedroom's ${luckyDirection.toLowerCase()} corner. Your ${zodiacSign} energy creates deep, meaningful connections.</p>
-
-                    <h4>🌿 Health & Wellness:</h4>
-                    <p>Support your wellbeing through ${primaryElement.toLowerCase()}-based practices. Regular meditation facing ${luckyDirection.toLowerCase()} will maintain your energy balance.</p>
-
-                    <h4>💎 Complete Crystal Set Recommendation:</h4>
-                    <p>For your ${primaryElement} element, we recommend our complete crystal collection: Amethyst for spiritual growth, Rose Quartz for love, Citrine for wealth, and Black Tourmaline for protection.</p>
-                `
-            }
+                <h4>💎 Recommended Crystals:</h4>
+                <p>Consider our ${primaryElement === 'Fire' ? 'Citrine Wealth Stone' : primaryElement === 'Water' ? 'Amethyst Bracelet' : primaryElement === 'Earth' ? 'Rose Quartz Pendant' : 'Black Tourmaline Shield'} for your ${primaryElement} element.</p>
+            `
         };
-
-        return consultationTemplates[data.consultationType] || consultationTemplates['general'];
     }
 
-    showConsultationResults(data) {
+    async showConsultationResults(data) {
         console.log('Generating consultation results for:', data);
-        const consultation = this.generateConsultationContent(data);
-        console.log('Generated consultation:', consultation);
         
+        // Show loading message
+        const loadingModal = this.createLoadingModal();
+        document.body.appendChild(loadingModal);
+        
+        try {
+            const consultation = await this.generateConsultationContent(data);
+            console.log('Generated consultation:', consultation);
+            
+            // Remove loading modal
+            document.body.removeChild(loadingModal);
+            
+            // Show results
+            this.displayConsultationModal(consultation, data);
+            
+        } catch (error) {
+            console.error('Error generating consultation:', error);
+            // Remove loading modal
+            if (document.body.contains(loadingModal)) {
+                document.body.removeChild(loadingModal);
+            }
+            // Show error message
+            alert('Sorry, there was an error generating your consultation. Please try again.');
+        }
+    }
+
+    createLoadingModal() {
+        const loadingModal = document.createElement('div');
+        loadingModal.className = 'modal';
+        loadingModal.style.display = 'block';
+        loadingModal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px; text-align: center;">
+                <div class="modal-body" style="padding: 40px;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🔮</div>
+                    <h3>Generating Your AI Consultation...</h3>
+                    <p>Our AI feng shui master is analyzing your birth details and creating a personalized reading just for you.</p>
+                    <div style="margin: 20px 0;">
+                        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #6b46c1; border-radius: 50%; border-top: 3px solid transparent; animation: spin 1s linear infinite;"></div>
+                    </div>
+                    <p style="color: #718096; font-size: 0.9rem;">This may take 10-30 seconds...</p>
+                </div>
+            </div>
+        `;
+        return loadingModal;
+    }
+
+    displayConsultationModal(consultation, data) {
         // Create results modal
         const resultsModal = document.createElement('div');
         resultsModal.className = 'modal';
@@ -508,7 +559,7 @@ Generate your immediate AI consultation now?
         });
 
         if (window.cart) {
-            window.cart.showToast('Your consultation is ready! 🔮');
+            window.cart.showToast('Your AI consultation is ready! 🔮');
         }
         console.log('Consultation modal displayed successfully');
     }
@@ -594,7 +645,7 @@ class HeroAnimations {
     }
 }
 
-// Add CSS animations for toast notifications
+// Add CSS animations for toast notifications and loading spinner
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideInRight {
@@ -617,6 +668,11 @@ style.textContent = `
             transform: translateX(100%);
             opacity: 0;
         }
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
     .quantity-btn {

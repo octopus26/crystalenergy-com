@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup OpenAI API - CrystalEnergy.com</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .setup-container {
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .btn {
+            background: linear-gradient(45deg, #6b46c1, #9333ea);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #bbf7d0;
+        }
+        .warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+        }
+        a {
+            color: #e0e7ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>🔮 Setup AI-Powered Consultations</h1>
+        
+        <div class="info-box">
+            <h3>📝 Instructions:</h3>
+            <ol>
+                <li>Get your OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></li>
+                <li>Enter your API key below</li>
+                <li>Click "Enable AI Consultations"</li>
+                <li>Return to the main site to try enhanced consultations</li>
+            </ol>
+        </div>
+
+        <div class="info-box warning">
+            <strong>⚠️ Security Note:</strong> This is for demonstration purposes only. In production, API keys should be stored securely on your backend server, not in browser localStorage.
+        </div>
+
+        <form id="apiSetupForm">
+            <div class="form-group">
+                <label for="apiKey">OpenAI API Key:</label>
+                <input 
+                    type="password" 
+                    id="apiKey" 
+                    name="apiKey" 
+                    placeholder="sk-..." 
+                    required
+                >
+            </div>
+            
+            <button type="submit" class="btn">Enable AI Consultations</button>
+        </form>
+
+        <div id="status" class="info-box" style="display: none;"></div>
+
+        <div class="info-box">
+            <h4>🚀 What You'll Get:</h4>
+            <ul>
+                <li><strong>Personalized Analysis:</strong> AI reads your birth details and questions</li>
+                <li><strong>Dynamic Content:</strong> Every consultation is unique</li>
+                <li><strong>Professional Quality:</strong> Advanced feng shui master persona</li>
+                <li><strong>Specific Guidance:</strong> Tailored to your exact situation</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.html" style="text-decoration: none;">
+                <button class="btn" type="button">← Back to Main Site</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('apiSetupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const apiKey = document.getElementById('apiKey').value;
+            const statusDiv = document.getElementById('status');
+            
+            if (!apiKey.startsWith('sk-')) {
+                statusDiv.innerHTML = '❌ Invalid API key format. OpenAI API keys start with "sk-"';
+                statusDiv.className = 'info-box warning';
+                statusDiv.style.display = 'block';
+                return;
+            }
+            
+            // Store in localStorage (demo purposes only)
+            localStorage.setItem('openai_api_key', apiKey);
+            
+            statusDiv.innerHTML = '✅ API key saved successfully! Enhanced AI consultations are now enabled. Return to the main site to try them.';
+            statusDiv.className = 'info-box success';
+            statusDiv.style.display = 'block';
+            
+            // Clear the form
+            document.getElementById('apiKey').value = '';
+        });
+        
+        // Check if API key is already set
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('openai_api_key')) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '✅ API key is already configured. Enhanced AI consultations are enabled.';
+                statusDiv.className = 'info-box success';
+                statusDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
