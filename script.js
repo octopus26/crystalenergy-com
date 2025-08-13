@@ -222,25 +222,140 @@ class ShoppingCart {
             return;
         }
 
-        // Simple checkout simulation
-        const orderSummary = this.items.map(item => 
-            `${item.name} x${item.quantity} - $${(item.price * item.quantity).toFixed(2)}`
-        ).join('\n');
+        this.hideCartModal();
+        this.showProductPaymentModal();
+    }
 
-        const message = `Order Summary:\n\n${orderSummary}\n\nTotal: $${this.total.toFixed(2)}\n\nProceed to payment?`;
+    showProductPaymentModal() {
+        const paymentModal = document.createElement('div');
+        paymentModal.className = 'modal';
+        paymentModal.style.display = 'block';
+        paymentModal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>💳 Complete Your Order</h3>
+                    <span class="close product-payment-close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 20px;">
+                        <h4>Order Summary</h4>
+                        <div id="order-items" style="margin: 15px 0;">
+                            ${this.items.map(item => `
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                                    <span>${item.name} x${item.quantity}</span>
+                                    <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.2rem; margin-top: 15px; padding-top: 15px; border-top: 2px solid #6b46c1;">
+                            <span>Total:</span>
+                            <span style="color: #6b46c1;">$${this.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div id="product-card-element" style="padding: 15px; border: 2px solid #e2e8f0; border-radius: 10px; margin: 20px 0;">
+                        <!-- Stripe Elements will create form elements here -->
+                    </div>
+                    
+                    <div id="product-card-errors" role="alert" style="color: #ef4444; margin: 10px 0; font-size: 0.9rem;"></div>
+                    
+                    <div style="display: flex; gap: 15px; margin-top: 20px;">
+                        <button id="cancel-product-payment" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                        <button id="submit-product-payment" class="btn btn-primary" style="flex: 2;">
+                            <span id="product-button-text">Pay $${this.total.toFixed(2)}</span>
+                            <div id="product-spinner" style="display: none;">
+                                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #ffffff; border-radius: 50%; border-top: 2px solid transparent; animation: spin 1s linear infinite;"></div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 10px; font-size: 0.9rem; color: #4a5568;">
+                        <p><strong>Demo Mode:</strong> This is a demonstration. No real payment will be processed. Use test card: 4242 4242 4242 4242</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(paymentModal);
+        this.setupProductPaymentForm(paymentModal);
+
+        // Close functionality
+        const closeBtn = paymentModal.querySelector('.product-payment-close');
+        const cancelBtn = paymentModal.querySelector('#cancel-product-payment');
         
-        if (confirm(message)) {
-            // Simulate order processing
-            this.showToast('Order placed successfully! 🎉');
-            this.items = [];
-            this.updateCartDisplay();
-            this.hideCartModal();
-            
-            // Redirect to thank you page or payment processor
-            setTimeout(() => {
-                alert('Thank you for your order! You will receive a confirmation email shortly.');
-            }, 1000);
+        [closeBtn, cancelBtn].forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.body.removeChild(paymentModal);
+                this.showCartModal(); // Show cart again
+            });
+        });
+
+        // Close when clicking outside
+        paymentModal.addEventListener('click', (e) => {
+            if (e.target === paymentModal) {
+                document.body.removeChild(paymentModal);
+                this.showCartModal(); // Show cart again
+            }
+        });
+    }
+
+    setupProductPaymentForm(modal) {
+        const stripe = this.getStripe();
+        const submitButton = modal.querySelector('#submit-product-payment');
+        const spinner = modal.querySelector('#product-spinner');
+        const buttonText = modal.querySelector('#product-button-text');
+
+        if (!stripe) {
+            // Demo mode - simulate payment
+            submitButton.addEventListener('click', () => {
+                this.simulateProductPayment(modal);
+            });
+            return;
         }
+
+        // Real Stripe integration would go here
+        // For demo, use simulation
+        submitButton.addEventListener('click', () => {
+            this.simulateProductPayment(modal);
+        });
+    }
+
+    getStripe() {
+        // Check if Stripe is available (same as consultation)
+        if (typeof window !== 'undefined' && window.Stripe) {
+            const STRIPE_PUBLISHABLE_KEY = localStorage.getItem('stripe_publishable_key') || window.STRIPE_PUBLISHABLE_KEY;
+            if (STRIPE_PUBLISHABLE_KEY) {
+                return window.Stripe(STRIPE_PUBLISHABLE_KEY);
+            }
+        }
+        return null;
+    }
+
+    async simulateProductPayment(modal) {
+        const submitButton = modal.querySelector('#submit-product-payment');
+        const spinner = modal.querySelector('#product-spinner');
+        const buttonText = modal.querySelector('#product-button-text');
+
+        submitButton.disabled = true;
+        spinner.style.display = 'inline-block';
+        buttonText.style.display = 'none';
+
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        this.showToast('Payment successful! 💳');
+        this.showToast('Order placed successfully! 🎉');
+        
+        // Clear cart
+        this.items = [];
+        this.updateCartDisplay();
+        
+        document.body.removeChild(modal);
+        
+        // Show success message
+        setTimeout(() => {
+            alert('Thank you for your order! You will receive a confirmation email shortly.');
+        }, 1000);
     }
 }
 
@@ -284,11 +399,230 @@ class ConsultationForm {
             return;
         }
 
-        // Simulate booking process
-        this.showBookingConfirmation(consultationData);
+        // Process payment before consultation
+        this.processConsultationPayment(consultationData);
     }
 
-    showBookingConfirmation(data) {
+    processConsultationPayment(data) {
+        const stripe = this.getStripe();
+        if (!stripe) {
+            console.log('Stripe not available, using demo mode');
+            this.showPaymentConfirmation(data);
+            return;
+        }
+
+        const prices = {
+            'general': 299,    // $2.99 in cents
+            'love': 499,       // $4.99 in cents
+            'career': 499,     // $4.99 in cents
+            'health': 499,     // $4.99 in cents
+            'comprehensive': 799  // $7.99 in cents
+        };
+
+        const consultationTypes = {
+            'general': 'General Feng Shui Reading',
+            'love': 'Love & Relationships',
+            'career': 'Career & Wealth',
+            'health': 'Health & Wellness',
+            'comprehensive': 'Comprehensive Analysis'
+        };
+
+        this.showPaymentModal(data, prices[data.consultationType], consultationTypes[data.consultationType]);
+    }
+
+    getStripe() {
+        // In production, use your publishable key
+        const STRIPE_PUBLISHABLE_KEY = this.getStripeKey();
+        if (STRIPE_PUBLISHABLE_KEY && window.Stripe) {
+            return window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        }
+        return null;
+    }
+
+    getStripeKey() {
+        // Demo purposes - in production, this should be your actual publishable key
+        return localStorage.getItem('stripe_publishable_key') || window.STRIPE_PUBLISHABLE_KEY;
+    }
+
+    showPaymentModal(data, amount, serviceName) {
+        const paymentModal = document.createElement('div');
+        paymentModal.className = 'modal';
+        paymentModal.style.display = 'block';
+        paymentModal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>💳 Complete Your Payment</h3>
+                    <span class="close payment-close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h4>${serviceName}</h4>
+                        <div style="font-size: 2rem; color: #6b46c1; font-weight: 700;">$${(amount / 100).toFixed(2)}</div>
+                        <p style="color: #718096;">Secure payment powered by Stripe</p>
+                    </div>
+                    
+                    <div id="card-element" style="padding: 15px; border: 2px solid #e2e8f0; border-radius: 10px; margin: 20px 0;">
+                        <!-- Stripe Elements will create form elements here -->
+                    </div>
+                    
+                    <div id="card-errors" role="alert" style="color: #ef4444; margin: 10px 0; font-size: 0.9rem;"></div>
+                    
+                    <div style="display: flex; gap: 15px; margin-top: 20px;">
+                        <button id="cancel-payment" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                        <button id="submit-payment" class="btn btn-primary" style="flex: 2;">
+                            <span id="button-text">Pay $${(amount / 100).toFixed(2)}</span>
+                            <div id="spinner" style="display: none;">
+                                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #ffffff; border-radius: 50%; border-top: 2px solid transparent; animation: spin 1s linear infinite;"></div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 10px; font-size: 0.9rem; color: #4a5568;">
+                        <p><strong>Demo Mode:</strong> This is a demonstration. No real payment will be processed. Use test card: 4242 4242 4242 4242</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(paymentModal);
+
+        // Set up Stripe Elements or demo mode
+        this.setupPaymentForm(paymentModal, data, amount);
+
+        // Close functionality
+        const closeBtn = paymentModal.querySelector('.payment-close');
+        const cancelBtn = paymentModal.querySelector('#cancel-payment');
+        
+        [closeBtn, cancelBtn].forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.body.removeChild(paymentModal);
+            });
+        });
+
+        // Close when clicking outside
+        paymentModal.addEventListener('click', (e) => {
+            if (e.target === paymentModal) {
+                document.body.removeChild(paymentModal);
+            }
+        });
+    }
+
+    setupPaymentForm(modal, consultationData, amount) {
+        const stripe = this.getStripe();
+        const submitButton = modal.querySelector('#submit-payment');
+        const spinner = modal.querySelector('#spinner');
+        const buttonText = modal.querySelector('#button-text');
+
+        if (!stripe) {
+            // Demo mode - simulate payment
+            submitButton.addEventListener('click', () => {
+                this.simulatePayment(modal, consultationData, amount);
+            });
+            return;
+        }
+
+        // Real Stripe integration
+        const elements = stripe.elements();
+        const cardElement = elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    '::placeholder': {
+                        color: '#aab7c4',
+                    },
+                },
+            },
+        });
+
+        cardElement.mount('#card-element');
+
+        // Handle real-time validation errors from the card Element
+        cardElement.on('change', ({error}) => {
+            const displayError = modal.querySelector('#card-errors');
+            if (error) {
+                displayError.textContent = error.message;
+            } else {
+                displayError.textContent = '';
+            }
+        });
+
+        // Handle form submission
+        submitButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            
+            submitButton.disabled = true;
+            spinner.style.display = 'inline-block';
+            buttonText.style.display = 'none';
+
+            try {
+                // In a real implementation, you'd create a payment intent on your backend
+                // For demo purposes, we'll simulate the payment
+                await this.processStripePayment(stripe, cardElement, consultationData, amount);
+                document.body.removeChild(modal);
+                this.startConsultationGeneration(consultationData);
+            } catch (error) {
+                console.error('Payment failed:', error);
+                modal.querySelector('#card-errors').textContent = error.message;
+            } finally {
+                submitButton.disabled = false;
+                spinner.style.display = 'none';
+                buttonText.style.display = 'inline-block';
+            }
+        });
+    }
+
+    async simulatePayment(modal, consultationData, amount) {
+        const submitButton = modal.querySelector('#submit-payment');
+        const spinner = modal.querySelector('#spinner');
+        const buttonText = modal.querySelector('#button-text');
+
+        submitButton.disabled = true;
+        spinner.style.display = 'inline-block';
+        buttonText.style.display = 'none';
+
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        if (window.cart) {
+            window.cart.showToast('Payment successful! 💳');
+        }
+
+        document.body.removeChild(modal);
+        this.startConsultationGeneration(consultationData);
+    }
+
+    async processStripePayment(stripe, cardElement, consultationData, amount) {
+        // In a real implementation, you would:
+        // 1. Create a payment intent on your backend
+        // 2. Confirm the payment with Stripe
+        // 3. Handle the result
+        
+        // For demo purposes, simulate success
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        if (window.cart) {
+            window.cart.showToast('Payment successful! 💳');
+        }
+        
+        return { success: true };
+    }
+
+    startConsultationGeneration(data) {
+        console.log('Payment successful, generating consultation');
+        this.form.reset();
+        
+        if (window.cart) {
+            window.cart.showToast('Generating your consultation... 🔮');
+        }
+        
+        setTimeout(() => {
+            console.log('Showing consultation results');
+            this.showConsultationResults(data);
+        }, 1000);
+    }
+
+    showPaymentConfirmation(data) {
         const consultationTypes = {
             'general': 'General Feng Shui Reading - $2.99',
             'love': 'Love & Relationships - $4.99',
@@ -306,21 +640,11 @@ Service: ${consultationTypes[data.consultationType]}
 Birth Date: ${data.birthDate}
 Birth Place: ${data.birthPlace}
 
-Generate your immediate AI consultation now?
+Proceed with demo consultation (no payment required)?
         `;
 
         if (confirm(message)) {
-            console.log('User confirmed consultation generation');
-            // Generate and show consultation results immediately
-            if (window.cart) {
-                window.cart.showToast('Generating your consultation... 🔮');
-            }
-            this.form.reset();
-            
-            setTimeout(() => {
-                console.log('Showing consultation results');
-                this.showConsultationResults(data);
-            }, 2000); // Show loading for 2 seconds
+            this.startConsultationGeneration(data);
         }
     }
 

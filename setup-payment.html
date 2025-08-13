@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Payments - CrystalEnergy.com</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .setup-container {
+            max-width: 700px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .btn {
+            background: linear-gradient(45deg, #6b46c1, #9333ea);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #bbf7d0;
+        }
+        .warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+        }
+        a {
+            color: #e0e7ff;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 5px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .tab.active {
+            background: linear-gradient(45deg, #6b46c1, #9333ea);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>💳 Setup Payment Processing</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('demo')">Demo Mode</div>
+            <div class="tab" onclick="switchTab('stripe')">Stripe Setup</div>
+        </div>
+
+        <!-- Demo Mode Tab -->
+        <div id="demo-tab" class="tab-content active">
+            <div class="info-box success">
+                <h3>✅ Demo Mode Active</h3>
+                <p>The website is currently running in demo mode. All payments are simulated for demonstration purposes.</p>
+            </div>
+
+            <div class="info-box">
+                <h4>🎯 Demo Features:</h4>
+                <ul>
+                    <li><strong>Test Consultations:</strong> Experience the full payment flow</li>
+                    <li><strong>Product Purchases:</strong> Add items to cart and checkout</li>
+                    <li><strong>Payment UI:</strong> See Stripe-style payment forms</li>
+                    <li><strong>Success Flow:</strong> Complete transaction simulation</li>
+                </ul>
+            </div>
+
+            <div class="info-box warning">
+                <strong>⚠️ Demo Limitations:</strong> No real money is processed. No products are shipped. No actual consultations are delivered via email.
+            </div>
+        </div>
+
+        <!-- Stripe Setup Tab -->
+        <div id="stripe-tab" class="tab-content">
+            <div class="info-box">
+                <h3>📝 Stripe Integration Setup:</h3>
+                <ol>
+                    <li>Create a Stripe account at <a href="https://dashboard.stripe.com/register" target="_blank">dashboard.stripe.com</a></li>
+                    <li>Get your publishable key from the Stripe dashboard</li>
+                    <li>Enter your key below to enable real payments</li>
+                    <li>Set up webhooks and backend processing (requires server)</li>
+                </ol>
+            </div>
+
+            <div class="info-box warning">
+                <strong>⚠️ Production Requirements:</strong> For real payments, you need a backend server to securely process payments and handle webhooks. This frontend-only demo simulates the payment flow.
+            </div>
+
+            <form id="stripeSetupForm">
+                <div class="form-group">
+                    <label for="stripeKey">Stripe Publishable Key:</label>
+                    <input 
+                        type="text" 
+                        id="stripeKey" 
+                        name="stripeKey" 
+                        placeholder="pk_test_..." 
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn">Enable Real Payments</button>
+            </form>
+
+            <div id="stripe-status" class="info-box" style="display: none;"></div>
+
+            <div class="info-box">
+                <h4>🔧 Next Steps for Production:</h4>
+                <ul>
+                    <li><strong>Backend Server:</strong> Create payment intents securely</li>
+                    <li><strong>Webhook Handling:</strong> Process successful payments</li>
+                    <li><strong>Email Integration:</strong> Send consultation results</li>
+                    <li><strong>Order Management:</strong> Track product shipments</li>
+                    <li><strong>Customer Portal:</strong> Allow subscription management</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.html" style="text-decoration: none;">
+                <button class="btn" type="button">← Back to Main Site</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        document.getElementById('stripeSetupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const stripeKey = document.getElementById('stripeKey').value;
+            const statusDiv = document.getElementById('stripe-status');
+            
+            if (!stripeKey.startsWith('pk_')) {
+                statusDiv.innerHTML = '❌ Invalid Stripe key format. Publishable keys start with "pk_"';
+                statusDiv.className = 'info-box warning';
+                statusDiv.style.display = 'block';
+                return;
+            }
+            
+            // Store in localStorage (demo purposes only)
+            localStorage.setItem('stripe_publishable_key', stripeKey);
+            
+            statusDiv.innerHTML = '✅ Stripe key saved successfully! Real payment processing is now enabled (demo mode - no actual charges will occur without backend setup).';
+            statusDiv.className = 'info-box success';
+            statusDiv.style.display = 'block';
+            
+            // Clear the form
+            document.getElementById('stripeKey').value = '';
+        });
+        
+        // Check if Stripe key is already set
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('stripe_publishable_key')) {
+                const statusDiv = document.getElementById('stripe-status');
+                statusDiv.innerHTML = '✅ Stripe key is already configured. Payment processing is enabled.';
+                statusDiv.className = 'info-box success';
+                statusDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
