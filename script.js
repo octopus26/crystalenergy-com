@@ -290,11 +290,11 @@ class ConsultationForm {
 
     showBookingConfirmation(data) {
         const consultationTypes = {
-            'general': 'General Feng Shui Reading - $9',
-            'love': 'Love & Relationships - $12',
-            'career': 'Career & Wealth - $12',
-            'health': 'Health & Wellness - $12',
-            'comprehensive': 'Comprehensive Analysis - $19'
+            'general': 'General Feng Shui Reading - $2.99',
+            'love': 'Love & Relationships - $4.99',
+            'career': 'Career & Wealth - $4.99',
+            'health': 'Health & Wellness - $4.99',
+            'comprehensive': 'Comprehensive Analysis - $7.99'
         };
 
         const message = `
