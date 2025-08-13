@@ -253,11 +253,15 @@ class ConsultationForm {
 
     init() {
         if (this.form) {
+            console.log('Consultation form found, adding event listener');
             this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+        } else {
+            console.error('Consultation form not found!');
         }
     }
 
     handleSubmit(e) {
+        console.log('Form submitted!');
         e.preventDefault();
         
         const formData = new FormData(this.form);
@@ -270,6 +274,8 @@ class ConsultationForm {
             consultationType: formData.get('consultationType'),
             questions: formData.get('questions')
         };
+
+        console.log('Consultation data:', consultationData);
 
         // Validate required fields
         if (!consultationData.name || !consultationData.email || !consultationData.birthDate || 
@@ -304,11 +310,15 @@ Generate your AI consultation now?
         `;
 
         if (confirm(message)) {
+            console.log('User confirmed consultation generation');
             // Generate and show consultation results immediately
-            cart.showToast('Generating your consultation... 🔮');
+            if (window.cart) {
+                window.cart.showToast('Generating your consultation... 🔮');
+            }
             this.form.reset();
             
             setTimeout(() => {
+                console.log('Showing consultation results');
                 this.showConsultationResults(data);
             }, 2000); // Show loading for 2 seconds
         }
@@ -452,7 +462,9 @@ Generate your AI consultation now?
     }
 
     showConsultationResults(data) {
+        console.log('Generating consultation results for:', data);
         const consultation = this.generateConsultationContent(data);
+        console.log('Generated consultation:', consultation);
         
         // Create results modal
         const resultsModal = document.createElement('div');
@@ -495,7 +507,10 @@ Generate your AI consultation now?
             }
         });
 
-        cart.showToast('Your consultation is ready! 🔮');
+        if (window.cart) {
+            window.cart.showToast('Your consultation is ready! 🔮');
+        }
+        console.log('Consultation modal displayed successfully');
     }
 }
 
