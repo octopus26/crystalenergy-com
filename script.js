@@ -290,15 +290,15 @@ class ConsultationForm {
 
     showBookingConfirmation(data) {
         const consultationTypes = {
-            'general': 'General Feng Shui Reading - $29',
-            'love': 'Love & Relationships - $39',
-            'career': 'Career & Wealth - $39',
-            'health': 'Health & Wellness - $39',
-            'comprehensive': 'Comprehensive Analysis - $59'
+            'general': 'General Feng Shui Reading - $9',
+            'love': 'Love & Relationships - $12',
+            'career': 'Career & Wealth - $12',
+            'health': 'Health & Wellness - $12',
+            'comprehensive': 'Comprehensive Analysis - $19'
         };
 
         const message = `
-Consultation Booking Confirmation:
+AI Consultation Confirmation:
 
 Name: ${data.name}
 Email: ${data.email}
@@ -306,7 +306,7 @@ Service: ${consultationTypes[data.consultationType]}
 Birth Date: ${data.birthDate}
 Birth Place: ${data.birthPlace}
 
-Generate your AI consultation now?
+Generate your immediate AI consultation now?
         `;
 
         if (confirm(message)) {
