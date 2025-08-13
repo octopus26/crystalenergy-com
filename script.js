@@ -1,3 +1,435 @@
+// Configuration
+const BACKEND_URL = 'http://localhost:3001/api'; // Change to your backend URL
+const DEMO_MODE = true; // Set to false when using real backend
+
+// Initialize Stripe
+const stripe = Stripe('pk_test_your_stripe_publishable_key_here'); // Replace with your publishable key
+const elements = stripe.elements();
+
+// Payment Management
+class PaymentManager {
+    constructor() {
+        this.stripe = stripe;
+        this.elements = elements;
+        this.cardElement = null;
+        this.currentOrderData = null;
+        this.init();
+    }
+
+    init() {
+        this.setupStripe();
+        this.bindPaymentEvents();
+        this.setupPayPal();
+    }
+
+    setupStripe() {
+        // Create card element
+        this.cardElement = this.elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#333',
+                    fontFamily: 'Inter, sans-serif',
+                    '::placeholder': {
+                        color: '#8e8e8e',
+                    }
+                }
+            }
+        });
+
+        // Mount the card element
+        this.cardElement.mount('#card-element');
+
+        // Handle real-time validation errors
+        this.cardElement.on('change', (event) => {
+            const displayError = document.getElementById('card-errors');
+            if (event.error) {
+                displayError.textContent = event.error.message;
+                displayError.classList.add('visible');
+            } else {
+                displayError.textContent = '';
+                displayError.classList.remove('visible');
+            }
+        });
+    }
+
+    setupPayPal() {
+        // PayPal will be rendered when payment modal is shown
+    }
+
+    bindPaymentEvents() {
+        // Payment tab switching
+        document.querySelectorAll('.payment-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const method = e.currentTarget.getAttribute('data-method');
+                this.switchPaymentMethod(method);
+            });
+        });
+
+        // Stripe payment submission
+        document.getElementById('submit-payment').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleStripePayment();
+        });
+
+        // Payment modal close
+        document.getElementById('closePaymentModal').addEventListener('click', () => {
+            this.hidePaymentModal();
+        });
+
+        // Close payment modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const paymentModal = document.getElementById('paymentModal');
+            if (e.target === paymentModal) {
+                this.hidePaymentModal();
+            }
+        });
+    }
+
+    switchPaymentMethod(method) {
+        // Update tabs
+        document.querySelectorAll('.payment-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+        // Update forms
+        document.querySelectorAll('.payment-form').forEach(form => {
+            form.classList.remove('active');
+        });
+        
+        if (method === 'card') {
+            document.getElementById('card-payment').classList.add('active');
+        } else if (method === 'paypal') {
+            document.getElementById('paypal-payment').classList.add('active');
+            this.renderPayPalButtons();
+        }
+    }
+
+    async handleStripePayment() {
+        const submitButton = document.getElementById('submit-payment');
+        const customerName = document.getElementById('customerName').value;
+        const customerEmail = document.getElementById('customerEmail').value;
+
+        if (!customerName || !customerEmail) {
+            this.showError('Please fill in all required fields');
+            return;
+        }
+
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+
+        try {
+            if (DEMO_MODE) {
+                // Demo mode - simulate successful payment
+                setTimeout(() => {
+                    this.showPaymentSuccess({
+                        orderId: 'demo_' + Date.now(),
+                        orderType: this.currentOrderData.orderType
+                    });
+                }, 2000);
+                return;
+            }
+
+            // Create payment intent on backend
+            const response = await fetch(`${BACKEND_URL}/payments/stripe/create-intent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: this.currentOrderData.amount,
+                    currency: 'usd',
+                    customerEmail: customerEmail,
+                    customerName: customerName,
+                    orderType: this.currentOrderData.orderType,
+                    paymentMethod: 'stripe',
+                    metadata: this.currentOrderData.metadata || {}
+                }),
+            });
+
+            const { clientSecret, orderId } = await response.json();
+
+            // Confirm payment with Stripe
+            const result = await this.stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: this.cardElement,
+                    billing_details: {
+                        name: customerName,
+                        email: customerEmail,
+                    },
+                },
+            });
+
+            if (result.error) {
+                this.showError(result.error.message);
+            } else {
+                // Payment successful
+                this.showPaymentSuccess({
+                    orderId: orderId,
+                    orderType: this.currentOrderData.orderType
+                });
+
+                // If consultation, generate consultation
+                if (this.currentOrderData.orderType === 'consultation') {
+                    await this.generateConsultation(orderId, this.currentOrderData.consultationData);
+                }
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            this.showError('Payment failed. Please try again.');
+        } finally {
+            submitButton.classList.remove('loading');
+            submitButton.disabled = false;
+        }
+    }
+
+    renderPayPalButtons() {
+        const container = document.getElementById('paypal-button-container');
+        container.innerHTML = ''; // Clear existing buttons
+
+        if (typeof paypal === 'undefined') {
+            container.innerHTML = '<p>PayPal SDK not loaded. Please refresh the page.</p>';
+            return;
+        }
+
+        paypal.Buttons({
+            createOrder: (data, actions) => {
+                return this.createPayPalOrder();
+            },
+            onApprove: (data, actions) => {
+                return this.capturePayPalPayment(data.orderID);
+            },
+            onError: (err) => {
+                console.error('PayPal error:', err);
+                this.showError('PayPal payment failed. Please try again.');
+            }
+        }).render('#paypal-button-container');
+    }
+
+    async createPayPalOrder() {
+        const customerName = document.getElementById('paypalCustomerName').value;
+        const customerEmail = document.getElementById('paypalCustomerEmail').value;
+
+        if (!customerName || !customerEmail) {
+            this.showError('Please fill in all required fields');
+            throw new Error('Missing customer information');
+        }
+
+        if (DEMO_MODE) {
+            // Demo mode - return mock order ID
+            return 'demo_paypal_' + Date.now();
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/payments/paypal/create-order`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: this.currentOrderData.amount,
+                    currency: 'USD',
+                    customerEmail: customerEmail,
+                    customerName: customerName,
+                    orderType: this.currentOrderData.orderType,
+                    paymentMethod: 'paypal',
+                    metadata: this.currentOrderData.metadata || {}
+                }),
+            });
+
+            const result = await response.json();
+            return result.paypalOrderId;
+        } catch (error) {
+            console.error('PayPal order creation error:', error);
+            throw error;
+        }
+    }
+
+    async capturePayPalPayment(paypalOrderId) {
+        try {
+            if (DEMO_MODE) {
+                // Demo mode - simulate successful capture
+                setTimeout(() => {
+                    this.showPaymentSuccess({
+                        orderId: 'demo_' + Date.now(),
+                        orderType: this.currentOrderData.orderType
+                    });
+                }, 1000);
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/payments/paypal/capture/${paypalOrderId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showPaymentSuccess({
+                    orderId: result.orderId,
+                    orderType: result.orderType
+                });
+
+                // If consultation, generate consultation
+                if (result.orderType === 'consultation') {
+                    await this.generateConsultation(result.orderId, this.currentOrderData.consultationData);
+                }
+            } else {
+                this.showError('PayPal payment capture failed');
+            }
+        } catch (error) {
+            console.error('PayPal capture error:', error);
+            this.showError('PayPal payment failed. Please try again.');
+        }
+    }
+
+    async generateConsultation(orderId, consultationData) {
+        try {
+            if (DEMO_MODE) {
+                // Demo consultation
+                const demoConsultation = `## Your Personal Feng Shui Consultation
+
+**Dear ${consultationData.customerName},**
+
+Based on your birth information and specific questions, here is your personalized feng shui reading:
+
+**Personal Element Analysis:**
+Your birth date suggests a strong connection to earth elements, indicating stability and grounding as core strengths.
+
+**Lucky Colors & Directions:**
+- Colors: Earth tones, deep purple, gold
+- Directions: Southwest and Northeast for best energy
+- Crystals: Amethyst for wisdom, Citrine for abundance
+
+**Specific Guidance:**
+Regarding your questions about "${consultationData.questions.substring(0, 50)}...", the feng shui principles suggest focusing on creating harmony in your personal space.
+
+**Recommendations:**
+1. Place crystals in your home's wealth corner (far left from entrance)
+2. Keep your living space organized and clutter-free
+3. Use natural materials and warm lighting
+
+This consultation is based on traditional feng shui principles. Trust your intuition and implement changes gradually.
+
+*May your journey be filled with harmony and positive energy.*`;
+
+                this.showConsultationResult(demoConsultation);
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/consultations/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    orderId: orderId,
+                    customerId: consultationData.customerId,
+                    consultationType: consultationData.consultationType,
+                    birthDate: consultationData.birthDate,
+                    birthTime: consultationData.birthTime,
+                    birthPlace: consultationData.birthPlace,
+                    questions: consultationData.questions
+                }),
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showConsultationResult(result.result);
+            }
+        } catch (error) {
+            console.error('Consultation generation error:', error);
+        }
+    }
+
+    showPaymentModal(orderData) {
+        this.currentOrderData = orderData;
+        
+        // Update payment summary
+        document.getElementById('paymentSummary').innerHTML = this.generatePaymentSummary(orderData);
+        document.getElementById('paymentTotal').textContent = (orderData.amount / 100).toFixed(2);
+        
+        // Reset modal state
+        this.resetPaymentModal();
+        
+        // Show modal
+        document.getElementById('paymentModal').style.display = 'block';
+        
+        // Default to card payment
+        this.switchPaymentMethod('card');
+    }
+
+    generatePaymentSummary(orderData) {
+        if (orderData.orderType === 'consultation') {
+            return `
+                <div class="order-item">
+                    <span>${orderData.consultationData.consultationType} Consultation</span>
+                    <span>$${(orderData.amount / 100).toFixed(2)}</span>
+                </div>
+            `;
+        } else {
+            return window.cart.items.map(item => `
+                <div class="order-item">
+                    <span>${item.name} x ${item.quantity}</span>
+                    <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    hidePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        this.currentOrderData = null;
+    }
+
+    showPaymentSuccess(result) {
+        document.getElementById('paymentContent').style.display = 'none';
+        document.getElementById('paymentSuccess').style.display = 'block';
+        document.getElementById('paymentError').style.display = 'none';
+    }
+
+    showConsultationResult(result) {
+        document.getElementById('consultationResult').style.display = 'block';
+        document.getElementById('consultationContent').textContent = result;
+    }
+
+    showError(message) {
+        document.getElementById('paymentContent').style.display = 'none';
+        document.getElementById('paymentSuccess').style.display = 'none';
+        document.getElementById('paymentError').style.display = 'block';
+        document.getElementById('paymentErrorMessage').textContent = message;
+    }
+
+    resetPaymentModal() {
+        document.getElementById('paymentContent').style.display = 'block';
+        document.getElementById('paymentSuccess').style.display = 'none';
+        document.getElementById('paymentError').style.display = 'none';
+        document.getElementById('consultationResult').style.display = 'none';
+        
+        // Clear form fields
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerEmail').value = '';
+        document.getElementById('paypalCustomerName').value = '';
+        document.getElementById('paypalCustomerEmail').value = '';
+        
+        // Clear card errors
+        document.getElementById('card-errors').textContent = '';
+        document.getElementById('card-errors').classList.remove('visible');
+    }
+}
+
+// Reset payment modal function (global)
+function resetPaymentModal() {
+    if (window.paymentManager) {
+        window.paymentManager.resetPaymentModal();
+    }
+}
+
 // Shopping Cart Functionality
 class ShoppingCart {
     constructor() {
@@ -223,7 +655,26 @@ class ShoppingCart {
         }
 
         this.hideCartModal();
-        this.showProductPaymentModal();
+        
+        // Calculate total in cents
+        const totalInCents = Math.round(this.total * 100);
+        
+        // Create order data for payment
+        const orderData = {
+            orderType: 'product',
+            amount: totalInCents,
+            metadata: {
+                items: this.items.map(item => ({
+                    productId: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity
+                }))
+            }
+        };
+        
+        // Show payment modal
+        window.paymentManager.showPaymentModal(orderData);
     }
 
     showProductPaymentModal() {
@@ -404,13 +855,6 @@ class ConsultationForm {
     }
 
     processConsultationPayment(data) {
-        const stripe = this.getStripe();
-        if (!stripe) {
-            console.log('Stripe not available, using demo mode');
-            this.showPaymentConfirmation(data);
-            return;
-        }
-
         const prices = {
             'general': 299,    // $2.99 in cents
             'love': 499,       // $4.99 in cents
@@ -427,7 +871,24 @@ class ConsultationForm {
             'comprehensive': 'Comprehensive Analysis'
         };
 
-        this.showPaymentModal(data, prices[data.consultationType], consultationTypes[data.consultationType]);
+        // Create order data for consultation payment
+        const orderData = {
+            orderType: 'consultation',
+            amount: prices[data.consultationType],
+            consultationData: {
+                customerName: data.name,
+                customerEmail: data.email,
+                consultationType: consultationTypes[data.consultationType],
+                birthDate: data.birthDate,
+                birthTime: data.birthTime,
+                birthPlace: data.birthPlace,
+                questions: data.questions,
+                customerId: 'customer_' + Date.now() // Generate temp customer ID
+            }
+        };
+
+        // Show payment modal
+        window.paymentManager.showPaymentModal(orderData);
     }
 
     getStripe() {
@@ -1032,8 +1493,9 @@ document.head.appendChild(style);
 
 // Initialize all components when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize global cart instance
+    // Initialize global instances
     window.cart = new ShoppingCart();
+    window.paymentManager = new PaymentManager();
     
     // Initialize other components
     new ConsultationForm();

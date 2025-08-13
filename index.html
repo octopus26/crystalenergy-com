@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
 </head>
 <body>
     <!-- Navigation -->
@@ -307,6 +308,98 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="continueShopping">Continue Shopping</button>
                 <button class="btn btn-primary" id="checkout">Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Complete Your Payment</h3>
+                <span class="close" id="closePaymentModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="paymentContent">
+                    <div class="payment-summary">
+                        <h4>Order Summary</h4>
+                        <div id="paymentSummary"></div>
+                        <div class="payment-total">
+                            <strong>Total: $<span id="paymentTotal">0.00</span></strong>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-methods">
+                        <h4>Select Payment Method</h4>
+                        <div class="payment-tabs">
+                            <button class="payment-tab active" data-method="card">
+                                <i class="fas fa-credit-card"></i>
+                                Credit Card
+                            </button>
+                            <button class="payment-tab" data-method="paypal">
+                                <i class="fab fa-paypal"></i>
+                                PayPal
+                            </button>
+                        </div>
+                        
+                        <!-- Stripe Card Payment -->
+                        <div id="card-payment" class="payment-form active">
+                            <div class="customer-info">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="customerName">Full Name</label>
+                                        <input type="text" id="customerName" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customerEmail">Email</label>
+                                        <input type="email" id="customerEmail" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="card-element">
+                                <!-- Stripe Elements will create form elements here -->
+                            </div>
+                            <div id="card-errors" role="alert"></div>
+                            <button id="submit-payment" class="btn btn-primary btn-full">
+                                Complete Payment
+                            </button>
+                        </div>
+                        
+                        <!-- PayPal Payment -->
+                        <div id="paypal-payment" class="payment-form">
+                            <div class="customer-info">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="paypalCustomerName">Full Name</label>
+                                        <input type="text" id="paypalCustomerName" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="paypalCustomerEmail">Email</label>
+                                        <input type="email" id="paypalCustomerEmail" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="paypal-button-container"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="paymentSuccess" class="payment-result" style="display: none;">
+                    <div class="success-icon">✅</div>
+                    <h3>Payment Successful!</h3>
+                    <p>Thank you for your purchase. You will receive a confirmation email shortly.</p>
+                    <div id="consultationResult" style="display: none;">
+                        <h4>Your Consultation Result</h4>
+                        <div id="consultationContent"></div>
+                    </div>
+                </div>
+                
+                <div id="paymentError" class="payment-result" style="display: none;">
+                    <div class="error-icon">❌</div>
+                    <h3>Payment Failed</h3>
+                    <p id="paymentErrorMessage">Something went wrong. Please try again.</p>
+                    <button class="btn btn-primary" onclick="resetPaymentModal()">Try Again</button>
+                </div>
             </div>
         </div>
     </div>
