@@ -279,7 +279,7 @@ class ConsultationForm {
 
         // Validate required fields
         if (!consultationData.name || !consultationData.email || !consultationData.birthDate || 
-            !consultationData.birthPlace || !consultationData.consultationType) {
+            !consultationData.birthPlace || !consultationData.consultationType || !consultationData.questions) {
             alert('Please fill in all required fields.');
             return;
         }
